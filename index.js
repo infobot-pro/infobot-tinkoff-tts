@@ -1,107 +1,116 @@
-var jwt = require('jsonwebtoken');
-var request = require('request');
+const auth = require('./auth.js');
+const protoLoader = require('@grpc/proto-loader');
+const grpcLibrary = require('grpc');
+const stream = require('stream');
+const wav = require('wav');
 
-class InfobotYandexTTS {
-    constructor(serviceAccountID, keyID, folderID, keyData) {
-        this.serviceAccountID = serviceAccountID;
-        this.keyID = keyID;
-        this.folderID = folderID;
-        this.keyData = keyData;
-        this.token = null;
+const API_HOST = "tts.tinkoff.ru:443";
 
-        if (!this.serviceAccountID) throw new Error('No Service Account ID provided');
-        if (!this.keyID) throw new Error('No Service Key ID provided');
-        if (!this.folderID) throw new Error('No Folder ID provided');
-        if (!this.keyData) throw new Error('No Private Key provided');
-    }
+const packageDefinition = protoLoader.loadSync(
+    [
+        __dirname + '/tts.proto',
+    ],
+    {
+        keepCase: false,
+        longs: String,
+        enums: String,
+        defaults: true,
+        oneofs: true
+    });
 
-    generateToken() {
-        const self = this;
-        return new Promise(function (resolve, reject) {
-            if (!(self.token && self.tokenExpire && self.tokenExpire < Math.floor(new Date() / 1000))) {
-                const expire = Math.floor(new Date() / 1000) + 60;
+const ttsProto = grpcLibrary.loadPackageDefinition(packageDefinition).tinkoff.cloud.tts.v1;
 
-                const payload = {
-                    'aud': 'https://iam.api.cloud.yandex.net/iam/v1/tokens',
-                    'iss': self.serviceAccountID,
-                    'iat': Math.floor(new Date() / 1000),
-                    'exp': expire
-                };
+class InfobotTinkoffTTS {
+    constructor(apiKey, secretKey, voice) {
+        this._apiKey = apiKey;
+        this._secretKey = secretKey;
 
-                const tokenJWT = jwt.sign(payload, self.keyData, {
-                    algorithm: 'PS256',
-                    keyid: self.keyID
-                });
+        if (!this._apiKey) throw new Error('No API KEY provided');
+        if (!this._secretKey) throw new Error('No SECRET KEY provided');
 
-                request.post(
-                    'https://iam.api.cloud.yandex.net/iam/v1/tokens',
-                    {json: {jwt: tokenJWT}},
-                    function (error, response, body) {
-                        if (!error && parseInt(response.statusCode) === 200) {
-                            self.token = body.iamToken;
-                            self.tokenExpire = expire;
-                            resolve(self.token);
-                        } else {
-                            reject(error);
-                        }
-                    }
-                );
-            } else {
-                resolve(self.token);
-            }
-        });
+        let voiceParam = null;
+
+        if (voice.toLowerCase() === 'alyona') {
+            voiceParam = 'female_voice';
+        }
+
+        const channelCredentials = grpcLibrary.credentials.createSsl();
+        const callCredentials = grpcLibrary.credentials.createFromMetadataGenerator(
+            auth.jwtMetadataGenerator(apiKey, secretKey, voiceParam, "test_issuer", "test_subject"));
+
+        this._credentials = grpcLibrary.credentials.combineChannelCredentials(channelCredentials, callCredentials);
+        this._client = new ttsProto.TextToSpeech(API_HOST, this._credentials);
     }
 
     generateAudio(text, params) {
         const self = this;
-        return new Promise(function (resolve, reject) {
-            if (!text) reject('No text specified');
-            self.generateToken().then(function () {
-                params.format = params.format || 'oggopus';
-                params.sampleRate = params.sampleRate || 48000;
-                params.emotion = params.emotion || 'neutral';
-                params.speed = params.speed || 1.0;
-                params.ssml = params.ssml || false;
-                params.language = params.language || 'ru-RU';
+        return new Promise((resolve, reject) => {
+            if (!params) params = {};
+            const encoding = params.format || 'LINEAR16';
+            const sampleRate = parseInt(params.sampleRate) || 48000;
 
-                var data = {
-                    voice: params.voice,
-                    emotion: params.emotion,
-                    format: params.format,
-                    folderId: self.folderID,
-                    sampleRateHertz: params.sampleRate,
-                    speed: params.speed,
-                    lang: params.language
-                };
-
-                if (params.ssml) {
-                    data['ssml'] = text;
-                } else {
-                    data['text'] = text;
+            if (encoding === 'LINEAR16' && sampleRate !== 48000) {
+                reject("Only 48 kHz sampling rate is supported for LINEAR16 for now");
+            }
+            const ttsStreamingCall = self._client.StreamingSynthesize({
+                input: {
+                    text: text,
+                },
+                audioConfig: {
+                    audioEncoding: encoding,
+                    speaking_rate: params.speed || 1.0,
+                    sampleRateHertz: sampleRate,
                 }
+            });
 
-                request.post(
-                    'https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize',
-                    {
-                        headers: {
-                            'Authorization': 'Bearer ' + self.token
-                        },
-                        form: data,
-                        encoding: null
-                    },
-                    function (error, response, body) {
-                        if (!error && response.statusCode === 200) {
-                            resolve(body);
-                        } else {
-                            reject(error);
-                        }
-                    }
-                );
-            }).catch(function (err) {
-                reject(err);
+            ttsStreamingCall.on('metadata', (metadata) => {
+            });
+            ttsStreamingCall.on('status', (status) => {
+                this._client.close();
+            });
+            ttsStreamingCall.on('error', (error) => reject(error));
+            let startedStreaming = false;
+            ttsStreamingCall.on('data', (response) => {
+                if (!startedStreaming) {
+                    startedStreaming = true;
+                }
+            });
+
+            const transformStream = new stream.Transform({
+                writableObjectMode: true,
+                transform(chunk, encoding, callback) {
+                    let pcm_data;
+                    pcm_data = chunk.audioChunk;
+                    callback(null, pcm_data);
+                }
+            });
+
+            const wavStream = new wav.Writer({
+                channels: 1,
+                sampleRate: sampleRate,
+                bitDepth: 16,
+            });
+
+            ttsStreamingCall.pipe(transformStream).pipe(wavStream);
+
+            let result = null;
+            wavStream.on('data', chunk => {
+                if (!result) {
+                    result = Buffer.from(chunk);
+                } else {
+                    result = Buffer.concat([result, chunk]);
+                }
+            });
+
+            wavStream.on('error', function (chunk) {
+                resolve(reject);
+            });
+
+            wavStream.on('end', function () {
+                resolve(result);
             });
         });
     }
 }
 
-module.exports = InfobotYandexTTS;
+module.exports = InfobotTinkoffTTS;

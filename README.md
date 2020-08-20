@@ -1,33 +1,34 @@
-# infobot-yandex-tts
-Node.JS library for [Yandex Speech Cloud](https://cloud.yandex.ru/docs/speechkit/tts/) service.
+# infobot-tinkoff-tts
+Node.JS library for [Tinkoff Voicekit TTS](https://voicekit.tinkoff.ru/) service.
 Library can be used to generate audio files from text with TTS service.
 
-To work with this library you need to obtain from Yandex Cloud:
-* Private key in PEM format
-* Service ID
-* Service Key
-* Folder ID
+Based on examples for Node.JS from https://github.com/TinkoffCreditSystems/voicekit-examples/tree/master/nodejs
 
-Please check [this page](https://cloud.yandex.ru/docs/iam/operations/sa/create) for information about service accounts.
+To work with this library you need to obtain from Tinkoff Voicekit:
+* API key
+* Secret key
+
+Please check [this page](https://voicekit.tinkoff.ru/) for information about registration process.
 
 ## Audio file generation example:
 ```javascript
-const TTS = require('infobot-yandex-tts');
+const TTS = require('infobot-tinkoff-tts');
 const fs = require('fs');
 
-const key = SERVICE_KEY ;
-const folder_id = FOLDER_ID;
-const service_id = SERVICE_ID;
+const key = API_KEY ;
+const secret = SECRET_KEY;
 
-const tts = new TTS(service_id, key, folder_id, fs.readFileSync('./yandex.pem'));
-tts.generateAudio('Привет, это тест. А меня зовут Алёна.', {
-    voice: 'alena'
-}).then(res => {
-    fs.writeFileSync('out.ogg', res);
+const tts = new TTS(key, secret, 'oleg');
+tts.generateAudio('Привет, это тест голоса Олег').then(res => {
+    fs.writeFileSync('out.wav', res);
 }).catch(err => {
     console.error(err);
 });
 ````
+
+## Suported voices:
+* oleg - Russian Male
+* alyona - Russian Female 
 
 Provided by [INFOBOT LLC.](https://infobot.pro) under ISC license.
 
