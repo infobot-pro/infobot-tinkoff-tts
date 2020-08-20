@@ -108,5 +108,4 @@ dist
 test/
 .idea/
 test.js
-yandex.pem
-out.ogg
+out.wav
