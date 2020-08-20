@@ -26,7 +26,7 @@ tts.generateAudio('Привет, это тест голоса Олег').then(re
 });
 ````
 
-## Suported voices:
+## Supported voices:
 * oleg - Russian Male
 * alyona - Russian Female 
 
