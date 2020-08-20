@@ -1,5 +1,5 @@
 {
-  "name": "infobot-yandex-tts",
+  "name": "infobot-tinkoff-tts",
   "version": "1.0.0",
   "description": "Node.JS library for Tinkoff Voicekit Text-to-Speech",
   "main": "index.js",
