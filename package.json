@@ -1,6 +1,6 @@
 {
   "name": "infobot-tinkoff-tts",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Node.JS library for Tinkoff Voicekit Text-to-Speech",
   "main": "index.js",
   "scripts": {
@@ -27,8 +27,7 @@
     "concat-stream": "^2.0.0",
     "@grpc/grpc-js": "^1.8.12",
     "wav": "^1.0.2",
-    "yargs": "^14.2.0",
-    "@discordjs/opus": "^0.3.2"
+    "yargs": "^14.2.0"
   },
   "devDependencies": {}
 }
