@@ -93,3 +93,5 @@ test/
 test.js
 yandex.pem
 out.ogg
+
+package-lock.json

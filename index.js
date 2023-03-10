@@ -1,6 +1,6 @@
 const auth = require('./auth.js');
 const protoLoader = require('@grpc/proto-loader');
-const grpcLibrary = require('grpc');
+const grpcLibrary = require('@grpc/grpc-js');
 const stream = require('stream');
 const wav = require('wav');
 

@@ -4,7 +4,7 @@ Library can be used to generate audio files from text with TTS service.
 
 Based on examples for Node.JS from https://github.com/TinkoffCreditSystems/voicekit-examples/tree/master/nodejs
 
-To work with this library you need to obtain from Tinkoff Voicekit:
+To work with this library you need to obtain from Tinkoff VoiceKit:
 * API key
 * Secret key
 
