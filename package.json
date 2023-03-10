@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/infobot-pro/infobot-tinkoff-tts#readme",
   "dependencies": {
-    "@grpc/proto-loader": "^0.5.2",
+    "@grpc/proto-loader": "^0.7.5",
     "concat-stream": "^2.0.0",
     "@grpc/grpc-js": "^1.8.12",
     "wav": "^1.0.2",
