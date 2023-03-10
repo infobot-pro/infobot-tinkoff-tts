@@ -1,6 +1,6 @@
 {
   "name": "infobot-tinkoff-tts",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Node.JS library for Tinkoff Voicekit Text-to-Speech",
   "main": "index.js",
   "scripts": {
